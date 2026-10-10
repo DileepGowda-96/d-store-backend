@@ -23,12 +23,41 @@ public class Wishlist {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @ManyToMany
-    @JoinTable(
-            name = "wishlist_products",
-            joinColumns = @JoinColumn(name = "wishlist_id"),
-            inverseJoinColumns = @JoinColumn(name = "product_id")
+    @OneToMany(
+            mappedBy = "wishlist",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
     )
     @Builder.Default
-    private List<Product> products = new ArrayList<>();
+    private List<WishlistProduct> wishlistProducts = new ArrayList<>();
+
+    public List<Product> getProducts() {
+        return wishlistProducts.stream()
+                .map(WishlistProduct::getProduct)
+                .toList();
+    }
+
+    public void addProduct(Product product) {
+        boolean exists = wishlistProducts.stream()
+                .anyMatch(item -> item.getProduct().getId()
+                        .equals(product.getId()));
+
+        if (exists) {
+            throw new RuntimeException(
+                    "Product already exists in wishlist"
+            );
+        }
+
+        WishlistProduct wishlistProduct = new WishlistProduct();
+        wishlistProduct.setWishlist(this);
+        wishlistProduct.setProduct(product);
+
+        wishlistProducts.add(wishlistProduct);
+    }
+
+    public void removeProduct(Product product) {
+        wishlistProducts.removeIf(item ->
+                item.getProduct().getId().equals(product.getId())
+        );
+    }
 }

@@ -10,6 +10,7 @@ import com.dileep.ecommerce.repository.ProductRepository;
 import com.dileep.ecommerce.repository.UserRepository;
 import com.dileep.ecommerce.repository.WishlistRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -30,26 +31,19 @@ public class WishlistService {
         this.productRepository = productRepository;
     }
 
-    public WishlistResponse addToWishlist(
-            Long userId,
-            Long productId) {
+    @Transactional
+    public WishlistResponse addToWishlist(Long userId, Long productId) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found"
-                        ));
+                        new ResourceNotFoundException("User not found"));
 
         Product product = productRepository.findById(productId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Product not found"
-                        ));
+                        new ResourceNotFoundException("Product not found"));
 
-        Wishlist wishlist = wishlistRepository
-                .findByUserId(userId)
+        Wishlist wishlist = wishlistRepository.findByUserId(userId)
                 .orElseGet(() -> {
-
                     Wishlist newWishlist = Wishlist.builder()
                             .user(user)
                             .build();
@@ -57,63 +51,60 @@ public class WishlistService {
                     return wishlistRepository.save(newWishlist);
                 });
 
-        if (wishlist.getProducts().contains(product)) {
+        boolean alreadyExists = wishlist.getProducts().stream()
+                .anyMatch(existing ->
+                        existing.getId().equals(productId));
+
+        if (alreadyExists) {
             throw new RuntimeException(
-                    "Product already exists in wishlist"
-            );
+                    "Product already exists in wishlist");
         }
 
-        wishlist.getProducts().add(product);
+        wishlist.addProduct(product);
 
-        return convertToResponse(
-                wishlistRepository.save(wishlist)
-        );
+        Wishlist savedWishlist = wishlistRepository.save(wishlist);
+
+        return convertToResponse(savedWishlist);
     }
 
+    @Transactional(readOnly = true)
     public WishlistResponse getWishlist(Long userId) {
 
-        Wishlist wishlist = wishlistRepository
-                .findByUserId(userId)
+        Wishlist wishlist = wishlistRepository.findByUserId(userId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Wishlist not found"
-                        ));
+                        new ResourceNotFoundException("Wishlist not found"));
 
         return convertToResponse(wishlist);
     }
 
-    public WishlistResponse removeFromWishlist(
-            Long userId,
-            Long productId) {
+    @Transactional
+    public WishlistResponse removeFromWishlist(Long userId, Long productId) {
 
-        Wishlist wishlist = wishlistRepository
-                .findByUserId(userId)
+        Wishlist wishlist = wishlistRepository.findByUserId(userId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Wishlist not found"
-                        ));
+                        new ResourceNotFoundException("Wishlist not found"));
 
         Product product = productRepository.findById(productId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Product not found"
-                        ));
+                        new ResourceNotFoundException("Product not found"));
 
-        if (!wishlist.getProducts().contains(product)) {
+        boolean exists = wishlist.getProducts().stream()
+                .anyMatch(existing ->
+                        existing.getId().equals(productId));
+
+        if (!exists) {
             throw new RuntimeException(
-                    "Product is not in wishlist"
-            );
+                    "Product is not in wishlist");
         }
 
-        wishlist.getProducts().remove(product);
+        wishlist.removeProduct(product);
 
-        return convertToResponse(
-                wishlistRepository.save(wishlist)
-        );
+        Wishlist savedWishlist = wishlistRepository.save(wishlist);
+
+        return convertToResponse(savedWishlist);
     }
 
-    private WishlistResponse convertToResponse(
-            Wishlist wishlist) {
+    private WishlistResponse convertToResponse(Wishlist wishlist) {
 
         List<WishlistProductResponse> products =
                 wishlist.getProducts()
