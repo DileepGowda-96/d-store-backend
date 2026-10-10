@@ -16,8 +16,9 @@ public class CorsConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allow the deployed D Store frontend
+        // Allow local and deployed D Store frontends
         configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:5173",
                 "https://d-store-frontend.vercel.app",
                 "https://d-store-frontend-git-master-dileepgowda-96.vercel.app"
         ));
@@ -32,7 +33,7 @@ public class CorsConfig {
                 "OPTIONS"
         ));
 
-        // Allow required request headers, including JWT authorization
+        // Allow required request headers
         configuration.setAllowedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Type",
@@ -40,12 +41,13 @@ public class CorsConfig {
                 "Origin"
         ));
 
-        // Allow the frontend to send JWT authorization headers
+        // Allow credentials when required
         configuration.setAllowCredentials(true);
 
         // Cache preflight responses for one hour
         configuration.setMaxAge(3600L);
 
+        // Register CORS configuration for all endpoints
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
 
